@@ -1,0 +1,153 @@
+# =============================================================================
+# FullBikers - .gitignore global del monorepositorio
+# Cubre: Python/Flask (backend), React/Node.js (frontend), Windows y VS Code.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Credenciales y variables de entorno
+# Nunca versionar contraseñas, cadenas de conexión a Neon ni llaves.
+# Solo se permiten plantillas .env.example sin valores reales.
+# -----------------------------------------------------------------------------
+.env
+.env.*
+*.env
+!.env.example
+!**/.env.example
+.flaskenv
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+secrets*.yml
+secrets*.yaml
+.secrets/
+.netrc
+.pgpass
+pgpass.conf
+
+# -----------------------------------------------------------------------------
+# Python / Flask
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Empaquetado y distribución
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+pip-wheel-metadata/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Flask
+instance/
+.webassets-cache
+
+# Pruebas, cobertura y cachés de herramientas
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+.pyre/
+.hypothesis/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# -----------------------------------------------------------------------------
+# Node.js / React
+# -----------------------------------------------------------------------------
+node_modules/
+.pnp/
+.pnp.js
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# Salidas de compilación del frontend (Vite / Create React App)
+frontend/dist/
+frontend/build/
+frontend/coverage/
+.vite/
+
+# Netlify y Render (configuración local generada)
+.netlify/
+.render/
+
+# -----------------------------------------------------------------------------
+# Logs y archivos temporales
+# -----------------------------------------------------------------------------
+logs/
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# Volcados locales de base de datos (pueden contener datos personales)
+*.dump
+*.backup
+*.sqlite
+*.sqlite3
+*.db
+
+# -----------------------------------------------------------------------------
+# Windows
+# -----------------------------------------------------------------------------
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.stackdump
+
+# Archivos de bloqueo de Microsoft Office
+~$*
+
+# -----------------------------------------------------------------------------
+# VS Code
+# Se ignora la carpeta, salvo configuraciones compartibles del equipo.
+# -----------------------------------------------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.history/
+*.code-workspace
+
+# Otros editores
+.idea/
