@@ -40,6 +40,9 @@ Contratos para el desarrollo del frontend (React).
 | 409 | `correo_ya_registrado` | Registro o cambio de perfil con un correo de otra cuenta. | Mostrar en el campo correo. |
 | 409 | `stock_insuficiente` | La cantidad pedida (o la resultante en el carrito) supera el stock; `detalles.stock_disponible` (y `cantidad_en_carrito` al agregar). | Mostrar y ajustar el selector de cantidad. |
 | 409 | `producto_no_disponible` | Producto, categoría o variante inactivos. | Sugerir retirar el artículo. |
+| 404 | `pedido_no_encontrado` | Pedido inexistente o de otro usuario. | — |
+| 409 | `carrito_vacio` | Confirmar sin carrito abierto o sin artículos (también al repetir una confirmación). | `GET /carrito`. |
+| 409 | `articulos_no_disponibles` | Al confirmar, algún artículo no está disponible; `detalles.items` los lista. | Volver al carrito. |
 | 409 | `carrito_no_modificable` | El carrito ya fue convertido en pedido o abandonado. | Recargar `GET /carrito`. |
 | 429 | `demasiadas_solicitudes` | 5 intentos de login fallidos en 15 min (mismo correo e IP). Cabecera `Retry-After` en segundos. | Mostrar `mensaje`; deshabilitar el botón un tiempo. |
 | 500 | `error_interno` | Error inesperado. Sin detalles técnicos. | Mensaje genérico. |
@@ -58,7 +61,8 @@ Los roles se leen de la base de datos en **cada** petición protegida: un cambio
 | Catálogo: principal, búsqueda, filtro, detalle (RF-01–RF-05) | ✔ | ✔ (consulta de productos para pedidos e inventario) | ✔ |
 | Actualizar perfil propio (RF-10) | ✔ | — (solo `/auth/me`) | ✔ (el suyo) |
 | Direcciones propias (RF-11) y carrito propio (RF-12–RF-15) | ✔ | — | ✔ (los suyos) |
-| Pedidos propios (RF-16–RF-21) | ✔ *(planificado)* | — | ✔ *(planificado)* |
+| Registrar pedido y consultar su detalle (RF-16–RF-19) | ✔ | — | ✔ (los suyos) |
+| Historial y estado de pedidos propios (RF-20–RF-21) | ✔ *(planificado)* | — | ✔ *(planificado)* |
 | Gestión de pedidos e inventario (RF-29–RF-34) | — | ✔ *(planificado)* | ✔ *(planificado)* |
 | Administración de usuarios, productos, categorías, reportes | — | — | ✔ *(planificado)* |
 
@@ -338,7 +342,7 @@ Reglas al **agregar** y al **modificar**: producto, categoría y variante activo
 
 Errores: `400 validacion` / `campo_no_permitido` / `solicitud_invalida`, `401`, `403` (empleado), `404 item_no_encontrado` (línea inexistente, ya retirada o de otro usuario), `404 variante_no_encontrada`, `409 stock_insuficiente`, `409 producto_no_disponible`, `409 carrito_no_modificable` (convertido o abandonado), `503`.
 
-**Importante:** el carrito **no reserva ni descuenta stock**. La disponibilidad mostrada puede cambiar antes de confirmar el pedido; el módulo de pedidos vuelve a validarla.
+**Importante:** el carrito **no reserva ni descuenta stock**. La disponibilidad mostrada puede cambiar antes de confirmar el pedido; `POST /api/pedidos` (§9) vuelve a validarla.
 
 ### Guía para React (perfil, direcciones y carrito)
 
@@ -349,29 +353,122 @@ Errores: `400 validacion` / `campo_no_permitido` / `solicitud_invalida`, `401`, 
 5. Para cada línea con `disponible: false`, mostrar un aviso según `motivo_no_disponible` y ofrecer "Retirar" (y "Ajustar a `stock_disponible`" si es `stock_insuficiente`).
 6. Ante `409 carrito_no_modificable`, volver a pedir `GET /carrito`.
 
-## 9. Contrato con el módulo de pedidos (RF-16 a RF-19)
+## 9. Pedidos (RF-16 a RF-19) — Implementado
 
-Para quien implemente `POST /api/pedidos`. El carrito **no** crea pedidos, no descuenta stock, no genera movimientos ni cambia el estado del carrito; todo eso corresponde al servicio de pedidos, en **una sola transacción**.
+Roles: `cliente`, `administrador` (cada uno **sus** pedidos; la gestión de pedidos de otros usuarios es RF-32/RF-33). Empleado → `403`.
 
-| Tema | Contrato |
+### `POST /api/pedidos` — Confirmar el carrito como pedido (RF-16, RF-17, RF-18, RF-19)
+
+```json
+{"id_direccion": 12, "observaciones": "Llamar antes de entregar"}
+```
+
+| Campo | Regla |
 |---|---|
-| Estados de `carrito.estado` | `abierto` (el único modificable; máx. uno activo por usuario, índice `ux_carrito_abierto_por_usuario`), `convertido` (ya generó pedido), `abandonado`. El módulo del carrito solo lee y crea carritos `abierto`. |
-| Carrito abierto | `CarritoDAO.obtener_abierto(conn, id_usuario, bloquear=True)` → `dict` (`id_carrito`, `id_usuario`, `estado`, `fecha_creacion`, `activo`) o `None`. Con `bloquear=True` bloquea la fila (`FOR NO KEY UPDATE`) hasta el fin de la transacción: ninguna operación del carrito puede modificarlo mientras se registra el pedido. |
-| Líneas activas | `CarritoDAO.listar_items(conn, id_carrito)` → lista de `ItemCarrito` (`models/carrito.py`) con `id_detalle_carrito`, `id_producto`, `id_variante`, `cantidad` (int > 0), `precio` (Decimal, **vigente**), `stock`, `producto_activo`, `categoria_activa`, `variante_activa`, `subtotal` (Decimal), `disponible` y `motivo_no_disponible`. Incluye las líneas no disponibles (no se filtran). |
-| Carrito vacío | `obtener_abierto` devuelve `None`, o `listar_items` devuelve `[]` → rechazar el pedido. |
-| Producto y variante | `detalle_carrito` guarda `(id_producto, id_variante)` con FK compuesta a `variante_producto (id_variante, id_producto)`: la variante siempre pertenece al producto. Todo producto vendible tiene al menos una variante (la base si no tiene características). `ProductoDAO.obtener_variante_para_venta(conn, id_variante)` devuelve `id_producto`, `stock`, `precio` y los tres indicadores de actividad. |
-| Precios | El carrito no guarda precios: usa `producto.precio` (`NUMERIC(14,2)`, Decimal en Python). El pedido debe **copiar** `precio_unitario` y calcular `subtotal` en `detalle_pedido`, y `pedido.subtotal`/`total`, con `models.dinero.a_decimal`. `Carrito(items=...).total` ya suma los subtotales con Decimal. |
-| Validaciones que hace el carrito | Al agregar o modificar: activos y cantidad ≤ stock **en ese momento**. No reserva. |
-| Validaciones que **debe repetir** pedidos | Dentro de su transacción: (1) carrito abierto del usuario, bloqueado; (2) al menos una línea; (3) para cada línea, producto, categoría y variante activos; (4) **descontar stock con UPDATE condicional** `UPDATE variante_producto SET stock = stock - %s WHERE id_variante = %s AND activo AND stock >= %s RETURNING stock` (0 filas → abortar con `409 stock_insuficiente`); (5) dirección activa del usuario (`DireccionDAO.obtener_activa(conn, id_direccion, id_usuario)`) y copia de sus campos al pedido; (6) un `movimiento_inventario` de salida por línea; (7) cerrar el carrito con transición condicional `UPDATE carrito SET estado = 'convertido' WHERE id_carrito = %s AND id_usuario = %s AND estado = 'abierto' AND activo` (0 filas → abortar). Ver `database/README.md` §8.3. |
-| Transacción | Abrir `with database.transaccion() as conn:` en el servicio de pedidos y pasar **la misma** `conn` a `CarritoDAO`, `ProductoDAO`, `DireccionDAO` y a los DAO de pedidos e inventario. Los DAO nunca hacen `commit`/`rollback`: cualquier excepción revierte todo. |
-| Después del pedido | Las líneas del carrito convertido se conservan (`activo = true`) como historial. El siguiente `POST /api/carrito/items` del cliente crea automáticamente un carrito abierto nuevo. |
-| Permisos | `fullbikers_app` ya tiene lo necesario (`SELECT/INSERT/UPDATE` en carrito, detalle_carrito, pedido, variante_producto; `SELECT/INSERT` en detalle_pedido y movimiento_inventario). |
+| `id_direccion` | Obligatorio, entero ≥ 1. Dirección **activa** del usuario (`GET /api/direcciones`). Inexistente, eliminada o ajena → `404 direccion_no_encontrada`. |
+| `observaciones` | Opcional, ≤ 1000 caracteres (`null`/`""` = sin observaciones). |
+| Cualquier otro campo | `id_usuario`, `items`, `cantidad`, `precio_unitario`, `subtotal`, `total`, `estado`, `stock`, `id_pedido`, `id_carrito`… → `400 campo_no_permitido`. Productos, cantidades y precios salen **siempre** del carrito abierto y de la base de datos. |
 
-## 10. Planificados para la entrega 1 (contratos a detallar en su etapa)
+```json
+201 {"pedido": {
+  "id_pedido": 15,
+  "fecha": "2026-11-26T15:30:00.123456+00:00",
+  "estado": "pendiente",
+  "fecha_actualizacion": "2026-11-26T15:30:00.123456+00:00",
+  "entrega": {"id_direccion": 12, "departamento": "Valle del Cauca", "municipio": "Tuluá",
+              "direccion": "Calle 26 # 30-15", "complemento": "Apto 301", "codigo_postal": "763021"},
+  "observaciones": "Llamar antes de entregar",
+  "detalles": [
+    {"id_detalle": 31, "id_producto": 1, "id_variante": 2,
+     "nombre": "Casco integral Ruta X1", "referencia": "CAS-INT-001", "imagen": null,
+     "sku": "CAS-INT-001-M-NEG", "talla": "M", "color": "Negro mate", "compatibilidad": null,
+     "cantidad": 2, "precio_unitario": "450000.00", "subtotal": "900000.00"}
+  ],
+  "cantidad_unidades": 2,
+  "subtotal": "900000.00",
+  "total": "900000.00"
+}}
+```
+
+- `id_pedido` es el identificador único (RF-18), generado por PostgreSQL (`GENERATED ALWAYS AS IDENTITY`). No hay otro código comercial.
+- Estado inicial: **`pendiente`**. `total = subtotal` (sin envío, impuestos ni descuentos en el alcance actual).
+- Fechas en ISO 8601 con zona (UTC); mostrarlas en `America/Bogota`.
+- Las líneas aparecen ordenadas por `id_variante`.
+
+**Errores** (en todos ellos **no se registra nada**: ni pedido, ni stock, ni movimientos; el carrito queda intacto):
+
+| HTTP | `codigo` | Cuándo |
+|---|---|---|
+| 400 | `validacion` / `campo_no_permitido` / `solicitud_invalida` | Cuerpo inválido. |
+| 401 / 403 | `no_autenticado` / `acceso_denegado` | Sin sesión / empleado. |
+| 404 | `direccion_no_encontrada` | Dirección inexistente, inactiva o ajena. |
+| 409 | `carrito_vacio` | No hay carrito abierto o no tiene artículos. También al **repetir** la confirmación de un carrito ya convertido (doble clic, dos pestañas). |
+| 409 | `articulos_no_disponibles` | Al menos un artículo no se puede comprar. `detalles.items` lista **todos** los problemas: `[{"id_detalle_carrito", "id_variante", "nombre", "motivo", "cantidad", "stock_disponible"}]`, con `motivo` igual a `motivo_no_disponible` del carrito (`producto_inactivo`, `categoria_inactiva`, `variante_inactiva`, `sin_stock`, `stock_insuficiente`). |
+| 409 | `stock_insuficiente` | Caso extremo: el descuento condicional del stock falló (`detalles.id_variante`). |
+| 500 / 503 | `error_interno` / `base_de_datos_no_disponible` | Error inesperado (sin detalles técnicos); se revierte todo. |
+
+### Flujo de confirmación (una sola transacción)
+
+1. Bloquear el carrito abierto del usuario (`FOR NO KEY UPDATE`). No existe o sin líneas → `409 carrito_vacio`.
+2. Validar la dirección (activa y del usuario).
+3. Bloquear las variantes del carrito **en orden ascendente de `id_variante`**.
+4. Releer las líneas (precio vigente, stock y estados ya bloqueados) y validar **todas**: producto, categoría y variante activos, variante del producto (FK compuesta) y `cantidad ≤ stock` → si no, `409 articulos_no_disponibles`.
+5. Calcular importes con `Decimal` e insertar `pedido` (`pendiente`) con la **copia** de la dirección.
+6. Insertar `detalle_pedido` con `precio_unitario` = precio vigente (subtotal: columna generada por PostgreSQL).
+7. Por línea: `UPDATE variante_producto SET stock = stock - n WHERE … AND activo AND stock >= n` + `movimiento_inventario` tipo `salida` (con `id_pedido`, `id_usuario` = cliente, `stock_anterior`, `stock_nuevo`, `motivo` "Venta: pedido N"). Si el UPDATE no afecta filas → se revierte todo.
+8. `UPDATE carrito SET estado = 'convertido' … WHERE estado = 'abierto'` (transición condicional).
+9. `COMMIT` y respuesta `201`.
+
+**Inventario:** el stock se descuenta **al registrar el pedido** (estado `pendiente`), no cuando el empleado lo confirme. Nunca queda negativo (`UPDATE` condicional + `CHECK (stock >= 0)`).
+
+**Solicitudes duplicadas o concurrentes:**
+- Mismo carrito dos veces a la vez: la segunda espera el bloqueo del carrito y, al continuar, ya no hay carrito abierto → `409 carrito_vacio`. Un solo pedido, un solo descuento, un movimiento por variante (además, `UNIQUE (id_pedido, id_variante, tipo)` impide salidas duplicadas).
+- Dos clientes por las últimas unidades: el segundo espera el bloqueo de la variante y, al releer, ve el stock ya descontado → `409 articulos_no_disponibles` con `stock_disponible` actualizado.
+- Después de un pedido, el siguiente `POST /api/carrito/items` crea un carrito nuevo.
+
+### `GET /api/pedidos/{id_pedido}` — Detalle de un pedido propio (RF-19)
+
+`200 {"pedido": Pedido}` con el mismo formato de la creación y el **estado actual**. Importes **históricos** (`precio_unitario`, `subtotal`, `total` guardados al comprar; no se recalculan con el catálogo). La entrega es la **copia** guardada en el pedido (no cambia si se edita o elimina la dirección). Se puede consultar aunque el producto o la variante estén hoy inactivos.
+Errores: `401`, `403`, `404 pedido_no_encontrado` (inexistente o de otro usuario).
+
+**Limitación del esquema:** `detalle_pedido` guarda producto, variante, cantidad y precio, pero **no** una copia del nombre, referencia, imagen ni talla/color: se muestran los valores **actuales** del producto y la variante. Si se renombran, los pedidos antiguos muestran el nombre nuevo (database/README.md §17).
+
+### Guía para React (carrito → dirección → confirmación → detalle)
+
+1. Página del carrito (`GET /carrito`). Si `vacio` → deshabilitar "Continuar". Si `todos_disponibles` es `false` → pedir que retire o ajuste los artículos marcados.
+2. Selección de dirección (`GET /direcciones`; preseleccionar la `principal`; enlace para crear una con `POST /direcciones`). Campo opcional de observaciones.
+3. "Confirmar pedido" → `POST /pedidos` con `{id_direccion, observaciones}`. **Deshabilitar el botón mientras la petición está en curso**.
+4. `201` → limpiar el carrito del estado global (o `GET /carrito`) y navegar a `/pedidos/{id_pedido}` mostrando la respuesta.
+5. `409 articulos_no_disponibles` → volver al carrito (`GET /carrito`), que marcará las líneas con su motivo. `409 carrito_vacio` → `GET /carrito` (posible doble envío: si ya hay un pedido, el usuario lo verá en su historial cuando exista RF-20). `404 direccion_no_encontrada` → recargar direcciones.
+
+## 10. Contrato para los siguientes módulos de pedidos e inventario
+
+Métodos reutilizables (todos reciben la conexión `conn` de `database.transaccion()` del servicio que llama; nunca hacen `commit`/`rollback`):
+
+| Método | Uso |
+|---|---|
+| `PedidoDAO.obtener_de_usuario(conn, id_pedido, id_usuario)` | `Pedido` con `detalles` o `None`. Base para RF-20/RF-21. |
+| `PedidoDAO.listar_detalles(conn, id_pedido)` | Líneas con importes históricos y descripción actual. Reutilizable en RF-32 (detalle para el empleado). |
+| `models.pedido.Pedido.to_dict()` | Formato JSON del pedido; mantenerlo en el historial y en la vista del empleado. |
+| `InventarioDAO.bloquear_variantes(conn, ids)` | Bloqueo en orden ascendente de `id_variante` antes de modificar varias variantes. |
+| `InventarioDAO.registrar_salida_por_pedido(...)` | Patrón de referencia: `UPDATE` condicional + movimiento en una sola sentencia (CTE), `stock_anterior/stock_nuevo` desde `RETURNING`. |
+| `CarritoDAO.obtener_abierto`, `listar_items`, `marcar_convertido` | Usados por el registro del pedido. |
+
+**RF-20 / RF-21 (historial y estado del cliente):** `GET /api/pedidos` y el estado ya viene en `GET /api/pedidos/{id}`. Filtrar siempre `WHERE id_usuario = usuario_actual().id_usuario AND activo`, orden `fecha DESC` (índice `ix_pedido_id_usuario_fecha`). Responder `404` a pedidos ajenos. Registrar la ruta en el mismo `pedido_controller.py` (`GET ""` aún no existe).
+
+**RF-29 a RF-31 (entradas, salidas y ajustes manuales):** añadir métodos a `dao/inventario_dao.py` con el patrón de database/README.md §8.2: `id_pedido = NULL`, `id_usuario` = empleado/administrador, `tipo` `entrada`/`salida` con cantidad positiva o `ajuste` con diferencia con signo ≠ 0, `motivo` obligatorio. Nunca modificar `stock` sin su movimiento, y nunca editar ni desactivar movimientos (las correcciones son nuevos ajustes).
+
+**RF-32 / RF-33 (gestión de pedidos por empleados):**
+- Transiciones condicionales (database/README.md §7 y §8.5): `UPDATE pedido SET estado = :nuevo, fecha_actualizacion = CURRENT_TIMESTAMP, id_usuario_actualizacion = :empleado WHERE id_pedido = :p AND estado = :esperado RETURNING id_pedido` (0 filas → `409`). La base exige `id_usuario_actualizacion` en todo estado distinto de `pendiente`.
+- **Confirmar el pedido (`pendiente → confirmado`) NO vuelve a descontar inventario**: el stock ya se descontó al registrarlo. La "verificación de disponibilidad" del empleado es solo informativa.
+- **Cancelar** (cuando se implemente) sí devuelve stock: por línea, en orden de `id_variante`, `UPDATE stock = stock + n` + movimiento `entrada` con `id_pedido` (la restricción `UNIQUE (id_pedido, id_variante, tipo)` impide devolver dos veces). Ver §8.4.
+- Rol: `requiere_rol(EMPLEADO)` (el administrador también pasa).
+
+## 11. Planificados para la entrega 1 (contratos a detallar en su etapa)
 
 | Método y ruta | RF | Roles | Estado |
 |---|---|---|---|
-| `POST /api/pedidos` `{id_direccion, observaciones}` | RF-16–RF-19 | cliente | Planificado (ver §9) |
-| `GET /api/pedidos` · `GET /api/pedidos/{id}` | RF-20, RF-21 | cliente (propios) | Planificado |
+| `GET /api/pedidos` (historial propio) | RF-20, RF-21 | cliente | Planificado (ver §10) |
+| Gestión de pedidos e inventario | RF-29–RF-34 | empleado, administrador | Planificado (ver §10) |
 
 Los recursos de cliente se filtran siempre por el usuario del token; un recurso ajeno responde `404` (no `403`) para no revelar su existencia.

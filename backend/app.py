@@ -20,6 +20,7 @@ from controllers.carrito_controller import carrito_bp
 from controllers.catalogo_controller import catalogo_bp
 from controllers.direccion_controller import direccion_bp
 from controllers.health_controller import health_bp
+from controllers.pedido_controller import pedido_bp
 from controllers.perfil_controller import perfil_bp
 from middleware import auth
 from middleware.error_handlers import registrar_manejadores
@@ -67,6 +68,7 @@ def create_app(nombre_entorno=None):
     app.register_blueprint(perfil_bp)
     app.register_blueprint(direccion_bp)
     app.register_blueprint(carrito_bp)
+    app.register_blueprint(pedido_bp)
     comandos.registrar_comandos(app)
 
     logger.info("API FullBikers iniciada (entorno: %s).", app.config["APP_ENV"])
