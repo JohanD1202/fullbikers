@@ -15,7 +15,8 @@ Contratos de la API para el frontend: [`API.md`](API.md).
 | Autorización por rol (`cliente`, `empleado`, `administrador`) y apoyo para propiedad de recursos | Implementado y probado |
 | Catálogo (`/api/principal`, `/api/productos`, `/api/productos/{id}`) protegido | Implementado y probado (RF-01 a RF-05) |
 | Comandos `crear-admin` y `crear-usuarios-prueba` | Implementados y probados |
-| Perfil, direcciones, carrito, pedidos, administración | Pendientes |
+| Perfil (`PATCH /api/perfil`), direcciones (`/api/direcciones`) y carrito (`/api/carrito`) (RF-10 a RF-15) | Implementado y probado (unitarias + integración) |
+| Pedidos, inventario, administración | Pendientes (contrato carrito → pedidos en `API.md` §9) |
 
 ## 2. Arquitectura
 
@@ -70,15 +71,20 @@ backend/
 ├── controllers/
 │   ├── health_controller.py    # /api/health, /api/health/db
 │   ├── auth_controller.py      # /api/auth/register, /login, /logout, /me
+│   ├── perfil_controller.py    # PATCH /api/perfil
+│   ├── direccion_controller.py # /api/direcciones
+│   ├── carrito_controller.py   # /api/carrito, /api/carrito/items
 │   ├── catalogo_controller.py  # /api/principal, /api/productos (protegidos)
 │   └── parametros.py           # Validación de parámetros de consulta
 ├── services/
 │   ├── auth_service.py         # Registro de clientes e inicio de sesión
 │   ├── usuario_service.py      # Validación y creación de usuarios; usuario activo
 │   ├── limitador_intentos.py   # Intentos fallidos de login (en memoria)
+│   ├── perfil_service.py, direccion_service.py, carrito_service.py
+│   ├── validacion.py           # Validación común de cuerpos JSON
 │   └── catalogo_service.py
-├── dao/{producto_dao.py, usuario_dao.py}
-├── models/{producto.py, usuario.py, dinero.py}
+├── dao/{producto_dao.py, usuario_dao.py, direccion_dao.py, carrito_dao.py}
+├── models/{producto.py, usuario.py, direccion.py, carrito.py, dinero.py}
 ├── middleware/
 │   ├── error_handlers.py
 │   └── auth.py                 # requiere_autenticacion, requiere_rol, exigir_propietario

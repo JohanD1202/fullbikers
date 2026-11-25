@@ -27,7 +27,14 @@ VARIABLES_DE_ENTORNO = (
 
 @pytest.fixture(autouse=True)
 def entorno_limpio(monkeypatch):
-    """Evita que variables del sistema o de un .env local afecten las pruebas."""
+    """Evita que variables del sistema o de un .env local afecten las pruebas.
+
+    create_app() no carga backend/.env durante las pruebas: así nunca se usan
+    los secretos ni la DATABASE_URL real (Neon) de un desarrollador.
+    """
+    import app as modulo_app
+
+    monkeypatch.setattr(modulo_app, "load_dotenv", lambda *args, **kwargs: False)
     for nombre in VARIABLES_DE_ENTORNO:
         monkeypatch.delenv(nombre, raising=False)
 
@@ -159,6 +166,17 @@ class RepositorioUsuariosFalso:
     def obtener_por_id(self, _conn, id_usuario):
         return self.filas.get(id_usuario)
 
+    def existe_correo_de_otro(self, _conn, correo, id_usuario):
+        return any(u.correo == correo and u.id_usuario != id_usuario for u in self.filas.values())
+
+    def actualizar_datos_personales(self, _conn, id_usuario, cambios):
+        usuario = self.filas.get(id_usuario)
+        if usuario is None or not usuario.activo:
+            return None
+        for campo, valor in cambios.items():
+            setattr(usuario, campo, valor)
+        return usuario
+
     def crear(self, _conn, nombre, apellido, correo, contrasena_hash, telefono, rol):
         usuario = Usuario(self.siguiente_id, nombre, apellido, correo, rol, True, telefono, contrasena_hash)
         self.filas[usuario.id_usuario] = usuario
@@ -174,4 +192,6 @@ def repositorio(monkeypatch):
     monkeypatch.setattr(UsuarioDAO, "obtener_por_correo", staticmethod(repo.obtener_por_correo))
     monkeypatch.setattr(UsuarioDAO, "obtener_por_id", staticmethod(repo.obtener_por_id))
     monkeypatch.setattr(UsuarioDAO, "crear", staticmethod(repo.crear))
+    monkeypatch.setattr(UsuarioDAO, "existe_correo_de_otro", staticmethod(repo.existe_correo_de_otro))
+    monkeypatch.setattr(UsuarioDAO, "actualizar_datos_personales", staticmethod(repo.actualizar_datos_personales))
     return repo
