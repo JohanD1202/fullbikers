@@ -36,7 +36,11 @@ Contratos para el desarrollo del frontend (React).
 | 403 | `acceso_denegado` | Usuario autenticado sin el rol necesario. | Mostrar "No tiene permisos" o volver al inicio. **No** borrar el token. |
 | 404 | `recurso_no_encontrado` / específico | Ruta o recurso inexistente (o ajeno al usuario). | — |
 | 405 | `metodo_no_permitido` | Método HTTP no soportado en la ruta. | — |
-| 409 | `correo_ya_registrado` | Registro con un correo existente. | Mostrar en el campo correo. |
+| 404 | `direccion_no_encontrada` / `item_no_encontrado` / `variante_no_encontrada` | Dirección o artículo de carrito inexistente, inactivo o **ajeno**; variante inexistente. | Recargar la lista. |
+| 409 | `correo_ya_registrado` | Registro o cambio de perfil con un correo de otra cuenta. | Mostrar en el campo correo. |
+| 409 | `stock_insuficiente` | La cantidad pedida (o la resultante en el carrito) supera el stock; `detalles.stock_disponible` (y `cantidad_en_carrito` al agregar). | Mostrar y ajustar el selector de cantidad. |
+| 409 | `producto_no_disponible` | Producto, categoría o variante inactivos. | Sugerir retirar el artículo. |
+| 409 | `carrito_no_modificable` | El carrito ya fue convertido en pedido o abandonado. | Recargar `GET /carrito`. |
 | 429 | `demasiadas_solicitudes` | 5 intentos de login fallidos en 15 min (mismo correo e IP). Cabecera `Retry-After` en segundos. | Mostrar `mensaje`; deshabilitar el botón un tiempo. |
 | 500 | `error_interno` | Error inesperado. Sin detalles técnicos. | Mensaje genérico. |
 | 503 | `base_de_datos_no_disponible` | PostgreSQL no configurado o no responde. | Mensaje genérico; reintentar. |
@@ -52,11 +56,13 @@ Los roles se leen de la base de datos en **cada** petición protegida: un cambio
 | Registro público | Solo crea clientes | — | — |
 | Login, logout, `/auth/me` | ✔ | ✔ | ✔ |
 | Catálogo: principal, búsqueda, filtro, detalle (RF-01–RF-05) | ✔ | ✔ (consulta de productos para pedidos e inventario) | ✔ |
-| Perfil, direcciones, carrito, pedidos propios (RF-10–RF-21) | ✔ *(planificado)* | — | ✔ *(planificado)* |
+| Actualizar perfil propio (RF-10) | ✔ | — (solo `/auth/me`) | ✔ (el suyo) |
+| Direcciones propias (RF-11) y carrito propio (RF-12–RF-15) | ✔ | — | ✔ (los suyos) |
+| Pedidos propios (RF-16–RF-21) | ✔ *(planificado)* | — | ✔ *(planificado)* |
 | Gestión de pedidos e inventario (RF-29–RF-34) | — | ✔ *(planificado)* | ✔ *(planificado)* |
 | Administración de usuarios, productos, categorías, reportes | — | — | ✔ *(planificado)* |
 
-El administrador tiene acceso a todas las funcionalidades. Para el **menú por rol** en React basta con `usuario.rol`; la API vuelve a verificar el permiso en cada llamada (el menú solo es una ayuda visual).
+El administrador tiene acceso a todas las funcionalidades; en perfil, direcciones y carrito opera sobre **sus propios** datos (la gestión de otros usuarios pertenece al módulo de administración). Un empleado que llame a perfil, direcciones o carrito recibe `403`. Para el **menú por rol** en React basta con `usuario.rol`; la API vuelve a verificar el permiso en cada llamada (el menú solo es una ayuda visual).
 
 ## 3. Diagnóstico (públicos)
 
@@ -232,17 +238,140 @@ Errores: `401`, `403`, `404 producto_no_encontrado` (inexistente, inactivo, cate
 | `/api/health` incluía `modulo_activo` | Eliminado | Sin utilidad para el diagnóstico. |
 | Catálogo sin autenticación (solo en desarrollo) | Requiere `Authorization: Bearer` | Autenticación obligatoria. |
 
-## 6. Planificados para la entrega 1 (contratos a detallar en su etapa)
+## 6. Perfil (RF-10) — Implementado
+
+### Consultar: `GET /api/auth/me`
+Se reutiliza el endpoint de §4: devuelve los datos personales vigentes.
+
+### `PATCH /api/perfil` — Roles: `cliente`, `administrador` (cada uno el suyo)
+Actualización **parcial**: se envían solo los campos que cambian (al menos uno). El usuario se toma del token.
+
+```json
+{"nombre": "Ana María", "apellido": "Pérez", "correo": "ana.maria@ejemplo.com", "telefono": "300 123 4567"}
+```
+
+| Campo | Regla |
+|---|---|
+| `nombre`, `apellido` | 1–80 caracteres; no pueden quedar vacíos. |
+| `correo` | Mismas reglas que el registro; se normaliza a minúsculas. Si pertenece a otra cuenta → `409 correo_ya_registrado`. Tras cambiarlo, el usuario inicia sesión con el nuevo correo (el token actual sigue siendo válido). |
+| `telefono` | Mismas reglas que el registro; `null` o `""` lo elimina. |
+| Otros (`rol`, `activo`, `id_usuario`, `contrasena`, …) | `400 campo_no_permitido`; no se cambia nada. |
+
+```json
+200 {"usuario": {"id_usuario": 7, "nombre": "Ana María", "apellido": "Pérez", "correo": "ana.maria@ejemplo.com", "telefono": "300 123 4567", "rol": "cliente"}}
+```
+Errores: `400 validacion` (con `detalles.campos`; cuerpo `{}` → campo `_`), `400 campo_no_permitido`, `400 solicitud_invalida`, `401`, `403` (empleado), `409 correo_ya_registrado`.
+Fuera de alcance: cambio y recuperación de contraseña, verificación por correo.
+
+## 7. Direcciones (RF-11) — Implementado
+
+Roles: `cliente`, `administrador` (cada uno **sus** direcciones). El propietario siempre es el usuario del token; una dirección ajena, inexistente o eliminada responde `404 direccion_no_encontrada`.
+
+**Objeto `Direccion`:**
+```json
+{"id_direccion": 12, "departamento": "Valle del Cauca", "municipio": "Tuluá",
+ "direccion": "Calle 26 # 30-15", "complemento": "Apto 301, barrio Centro",
+ "codigo_postal": "763021", "principal": true}
+```
+
+| Campo | Regla |
+|---|---|
+| `departamento` | Obligatorio, 1–60 caracteres. |
+| `municipio` | Obligatorio, 1–80. |
+| `direccion` | Obligatorio, 1–150. |
+| `complemento` | Opcional, ≤ 100 (`null`/`""` = sin complemento). |
+| `codigo_postal` | Opcional, 4–10 dígitos. |
+| `principal` | Opcional, `true`/`false`. Como máximo **una** principal: marcar una desmarca la anterior. La **primera** dirección del usuario queda principal automáticamente. |
+| Otros (`id_usuario`, `activo`, `id_direccion`, …) | `400 campo_no_permitido`. |
+
+| Método y ruta | Cuerpo | Respuesta |
+|---|---|---|
+| `GET /api/direcciones` | — | `200 {"direcciones": [Direccion, ...]}` solo activas; la principal primero. Lista vacía si no hay. |
+| `POST /api/direcciones` | Obligatorios + opcionales | `201 {"direccion": Direccion}` |
+| `GET /api/direcciones/{id}` | — | `200 {"direccion": Direccion}` |
+| `PATCH /api/direcciones/{id}` | Uno o más campos (parcial) | `200 {"direccion": Direccion}`. Para **seleccionar** la principal: `{"principal": true}` |
+| `DELETE /api/direcciones/{id}` | — | `204`. **Eliminación lógica** (`activo = false`; deja de ser principal). No se elige otra principal automáticamente. |
+
+Errores: `400 validacion`, `400 campo_no_permitido`, `401`, `403` (empleado), `404 direccion_no_encontrada`.
+Los pedidos guardan una **copia** de la dirección de entrega: editar o eliminar una dirección no altera pedidos anteriores.
+
+## 8. Carrito de compras (RF-12 a RF-15) — Implementado
+
+Roles: `cliente`, `administrador` (cada uno **su** carrito). Cada usuario tiene como máximo un carrito **abierto**; se crea automáticamente al agregar el primer artículo. **Todas** las operaciones devuelven el carrito completo y recalculado:
+
+```json
+200 {"carrito": {
+  "id_carrito": 31,
+  "estado": "abierto",
+  "items": [
+    {"id_detalle_carrito": 88, "id_producto": 1, "id_variante": 2,
+     "nombre": "Casco integral Ruta X1", "referencia": "CAS-INT-001", "marca": "MotoAndes",
+     "categoria": "Cascos", "imagen": null,
+     "sku": "CAS-INT-001-M-NEG", "talla": "M", "color": "Negro mate", "compatibilidad": null,
+     "cantidad": 2, "precio_unitario": "450000.00", "subtotal": "900000.00",
+     "stock_disponible": 8, "disponible": true, "motivo_no_disponible": null}
+  ],
+  "cantidad_items": 1, "cantidad_unidades": 2,
+  "total": "900000.00",
+  "vacio": false, "todos_disponibles": true
+}}
+```
+
+| Campo | Significado |
+|---|---|
+| `id_carrito` | `null` si el usuario aún no tiene carrito abierto (carrito vacío; **no** es un error). |
+| `precio_unitario` | Precio **vigente** del producto (el carrito no guarda precios; si cambia el precio, el carrito lo refleja). |
+| `subtotal` / `total` | Calculados en el servidor con `Decimal`: `subtotal = precio_unitario × cantidad`; `total` = suma de los subtotales de **todas** las líneas mostradas (incluidas las no disponibles). Cadenas con dos decimales. |
+| `stock_disponible` | Unidades actuales de la variante (`0` si el producto, la categoría o la variante están inactivos). |
+| `disponible` / `motivo_no_disponible` | `false` y un motivo si el artículo no se puede comprar ahora: `producto_inactivo`, `categoria_inactiva`, `variante_inactiva`, `sin_stock`, `stock_insuficiente` (cantidad > stock). Estos artículos **no se ocultan ni se eliminan**: el cliente los ve y decide retirarlos o bajar la cantidad. |
+| `todos_disponibles` | `true` si todas las líneas están disponibles (sugerencia para habilitar "Confirmar pedido"). |
+| `vacio` | `true` si no hay líneas activas. |
+
+| Método y ruta | Cuerpo | Notas |
+|---|---|---|
+| `GET /api/carrito` | — | Consulta con subtotales y total. Carrito vacío con `id_carrito: null` si no existe. |
+| `POST /api/carrito/items` | `{"id_producto": 1, "id_variante": 2, "cantidad": 1}` | RF-12. `id_variante` es **obligatorio** (para productos sin talla/color/compatibilidad, usar su variante base: la única de `variantes` en el detalle). Si la variante ya está en el carrito, **suma** la cantidad. Si se había retirado, se reactiva su línea. `cantidad`: entero ≥ 1 (no cadenas ni decimales). Cualquier otro campo (p. ej. `precio`) → `400 campo_no_permitido`. Responde `200`. |
+| `PATCH /api/carrito/items/{id_detalle_carrito}` | `{"cantidad": 3}` | RF-13. **Fija** la nueva cantidad (no suma). |
+| `DELETE /api/carrito/items/{id_detalle_carrito}` | — | RF-14. Retira la línea (borrado lógico). Responde `200` con el carrito (puede quedar vacío). Se permite aunque el producto esté inactivo o sin stock. |
+
+Reglas al **agregar** y al **modificar**: producto, categoría y variante activos (si no, `409 producto_no_disponible`); la cantidad resultante ≤ stock actual (si no, `409 stock_insuficiente` con `detalles`). La variante debe pertenecer al producto (si no, `400 validacion` en `id_variante`); variante inexistente → `404 variante_no_encontrada`.
+
+Errores: `400 validacion` / `campo_no_permitido` / `solicitud_invalida`, `401`, `403` (empleado), `404 item_no_encontrado` (línea inexistente, ya retirada o de otro usuario), `404 variante_no_encontrada`, `409 stock_insuficiente`, `409 producto_no_disponible`, `409 carrito_no_modificable` (convertido o abandonado), `503`.
+
+**Importante:** el carrito **no reserva ni descuenta stock**. La disponibilidad mostrada puede cambiar antes de confirmar el pedido; el módulo de pedidos vuelve a validarla.
+
+### Guía para React (perfil, direcciones y carrito)
+
+1. **Perfil:** cargar con `GET /auth/me`; guardar con `PATCH /perfil` enviando solo lo editado; mostrar `detalles.campos` junto a cada input. Actualizar el `usuario` del contexto con la respuesta.
+2. **Direcciones:** listar con `GET /direcciones`; alta/edición con `POST` / `PATCH`; botón "Usar como principal" = `PATCH {"principal": true}`; eliminar = `DELETE` (204) y recargar la lista.
+3. **Carrito:** el detalle del producto ofrece un selector de variante (`variantes` de `GET /productos/{id}`; deshabilitar las que tienen `disponible: false`) y llama a `POST /carrito/items`. Guardar en el estado global el `carrito` devuelto por **cualquier** operación (no hace falta un `GET` posterior). Ícono del encabezado: `cantidad_unidades`.
+4. Mostrar importes con `Intl.NumberFormat` (§1). Nunca calcular el total en el navegador ni enviar precios.
+5. Para cada línea con `disponible: false`, mostrar un aviso según `motivo_no_disponible` y ofrecer "Retirar" (y "Ajustar a `stock_disponible`" si es `stock_insuficiente`).
+6. Ante `409 carrito_no_modificable`, volver a pedir `GET /carrito`.
+
+## 9. Contrato con el módulo de pedidos (RF-16 a RF-19)
+
+Para quien implemente `POST /api/pedidos`. El carrito **no** crea pedidos, no descuenta stock, no genera movimientos ni cambia el estado del carrito; todo eso corresponde al servicio de pedidos, en **una sola transacción**.
+
+| Tema | Contrato |
+|---|---|
+| Estados de `carrito.estado` | `abierto` (el único modificable; máx. uno activo por usuario, índice `ux_carrito_abierto_por_usuario`), `convertido` (ya generó pedido), `abandonado`. El módulo del carrito solo lee y crea carritos `abierto`. |
+| Carrito abierto | `CarritoDAO.obtener_abierto(conn, id_usuario, bloquear=True)` → `dict` (`id_carrito`, `id_usuario`, `estado`, `fecha_creacion`, `activo`) o `None`. Con `bloquear=True` bloquea la fila (`FOR NO KEY UPDATE`) hasta el fin de la transacción: ninguna operación del carrito puede modificarlo mientras se registra el pedido. |
+| Líneas activas | `CarritoDAO.listar_items(conn, id_carrito)` → lista de `ItemCarrito` (`models/carrito.py`) con `id_detalle_carrito`, `id_producto`, `id_variante`, `cantidad` (int > 0), `precio` (Decimal, **vigente**), `stock`, `producto_activo`, `categoria_activa`, `variante_activa`, `subtotal` (Decimal), `disponible` y `motivo_no_disponible`. Incluye las líneas no disponibles (no se filtran). |
+| Carrito vacío | `obtener_abierto` devuelve `None`, o `listar_items` devuelve `[]` → rechazar el pedido. |
+| Producto y variante | `detalle_carrito` guarda `(id_producto, id_variante)` con FK compuesta a `variante_producto (id_variante, id_producto)`: la variante siempre pertenece al producto. Todo producto vendible tiene al menos una variante (la base si no tiene características). `ProductoDAO.obtener_variante_para_venta(conn, id_variante)` devuelve `id_producto`, `stock`, `precio` y los tres indicadores de actividad. |
+| Precios | El carrito no guarda precios: usa `producto.precio` (`NUMERIC(14,2)`, Decimal en Python). El pedido debe **copiar** `precio_unitario` y calcular `subtotal` en `detalle_pedido`, y `pedido.subtotal`/`total`, con `models.dinero.a_decimal`. `Carrito(items=...).total` ya suma los subtotales con Decimal. |
+| Validaciones que hace el carrito | Al agregar o modificar: activos y cantidad ≤ stock **en ese momento**. No reserva. |
+| Validaciones que **debe repetir** pedidos | Dentro de su transacción: (1) carrito abierto del usuario, bloqueado; (2) al menos una línea; (3) para cada línea, producto, categoría y variante activos; (4) **descontar stock con UPDATE condicional** `UPDATE variante_producto SET stock = stock - %s WHERE id_variante = %s AND activo AND stock >= %s RETURNING stock` (0 filas → abortar con `409 stock_insuficiente`); (5) dirección activa del usuario (`DireccionDAO.obtener_activa(conn, id_direccion, id_usuario)`) y copia de sus campos al pedido; (6) un `movimiento_inventario` de salida por línea; (7) cerrar el carrito con transición condicional `UPDATE carrito SET estado = 'convertido' WHERE id_carrito = %s AND id_usuario = %s AND estado = 'abierto' AND activo` (0 filas → abortar). Ver `database/README.md` §8.3. |
+| Transacción | Abrir `with database.transaccion() as conn:` en el servicio de pedidos y pasar **la misma** `conn` a `CarritoDAO`, `ProductoDAO`, `DireccionDAO` y a los DAO de pedidos e inventario. Los DAO nunca hacen `commit`/`rollback`: cualquier excepción revierte todo. |
+| Después del pedido | Las líneas del carrito convertido se conservan (`activo = true`) como historial. El siguiente `POST /api/carrito/items` del cliente crea automáticamente un carrito abierto nuevo. |
+| Permisos | `fullbikers_app` ya tiene lo necesario (`SELECT/INSERT/UPDATE` en carrito, detalle_carrito, pedido, variante_producto; `SELECT/INSERT` en detalle_pedido y movimiento_inventario). |
+
+## 10. Planificados para la entrega 1 (contratos a detallar en su etapa)
 
 | Método y ruta | RF | Roles | Estado |
 |---|---|---|---|
-| `GET /api/perfil` · `PUT /api/perfil` | RF-10 | cliente (propio) | Planificado |
-| `GET/POST /api/direcciones` · `PUT /api/direcciones/{id}` · `PATCH /api/direcciones/{id}/principal` · `PATCH /api/direcciones/{id}/desactivar` | RF-11 | cliente (propias) | Planificado |
-| `GET /api/carrito` | RF-15 | cliente | Planificado |
-| `POST /api/carrito/items` `{id_variante, cantidad}` | RF-12 | cliente | Planificado |
-| `PATCH /api/carrito/items/{id}` `{cantidad}` | RF-13 | cliente | Planificado |
-| `DELETE /api/carrito/items/{id}` (borrado lógico) | RF-14 | cliente | Planificado |
-| `POST /api/pedidos` `{id_direccion, observaciones}` | RF-16–RF-19 | cliente | Planificado |
+| `POST /api/pedidos` `{id_direccion, observaciones}` | RF-16–RF-19 | cliente | Planificado (ver §9) |
 | `GET /api/pedidos` · `GET /api/pedidos/{id}` | RF-20, RF-21 | cliente (propios) | Planificado |
 
-Los recursos de cliente se filtran siempre por el usuario del token; un recurso ajeno responde `404` (no `403`) para no revelar su existencia (`exigir_propietario` en `middleware/auth.py`).
+Los recursos de cliente se filtran siempre por el usuario del token; un recurso ajeno responde `404` (no `403`) para no revelar su existencia.

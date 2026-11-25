@@ -16,8 +16,11 @@ from config import database
 from config.logs import configurar_logging
 from config.settings import obtener_configuracion
 from controllers.auth_controller import auth_bp
+from controllers.carrito_controller import carrito_bp
 from controllers.catalogo_controller import catalogo_bp
+from controllers.direccion_controller import direccion_bp
 from controllers.health_controller import health_bp
+from controllers.perfil_controller import perfil_bp
 from middleware import auth
 from middleware.error_handlers import registrar_manejadores
 from services import auth_service
@@ -61,6 +64,9 @@ def create_app(nombre_entorno=None):
     app.register_blueprint(health_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(catalogo_bp)
+    app.register_blueprint(perfil_bp)
+    app.register_blueprint(direccion_bp)
+    app.register_blueprint(carrito_bp)
     comandos.registrar_comandos(app)
 
     logger.info("API FullBikers iniciada (entorno: %s).", app.config["APP_ENV"])

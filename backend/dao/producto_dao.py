@@ -62,6 +62,27 @@ class ProductoDAO:
         ]
 
     @staticmethod
+    def obtener_variante_para_venta(conn, id_variante):
+        """Variante con su producto y categoría (activos o no), o None si no existe.
+
+        Lo usan el carrito (RF-12, RF-13) y lo puede reutilizar el módulo de
+        pedidos: devuelve id_producto, stock y los tres indicadores "activo".
+        """
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT v.id_variante, v.id_producto, v.stock, p.precio,
+                       v.activo AS variante_activa, p.activo AS producto_activo, c.activo AS categoria_activa
+                FROM variante_producto v
+                JOIN producto p  ON p.id_producto = v.id_producto
+                JOIN categoria c ON c.id_categoria = p.id_categoria
+                WHERE v.id_variante = %s;
+                """,
+                (id_variante,),
+            )
+            return cur.fetchone()
+
+    @staticmethod
     def contar_catalogo(conn, id_categoria=None, busqueda=None):
         condiciones, params = _filtros_catalogo(id_categoria, busqueda)
         query = "SELECT COUNT(DISTINCT p.id_producto) AS total" + _FROM_CATALOGO + condiciones + ";"

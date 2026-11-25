@@ -39,6 +39,47 @@ def _texto_obligatorio(datos, campo, etiqueta, errores):
     return valor
 
 
+def _validar_correo(datos, errores):
+    correo = normalizar_correo(datos.get("correo"))
+    if not correo:
+        errores["correo"] = "El correo electrónico es obligatorio."
+    elif len(correo) > _LONGITUD_CORREO or not _PATRON_CORREO.match(correo):
+        errores["correo"] = "El correo electrónico no tiene un formato válido."
+    return correo
+
+
+def _validar_telefono(datos, errores):
+    """Teléfono opcional: None, ausente o vacío = sin teléfono."""
+    telefono = datos.get("telefono")
+    if telefono is None or (isinstance(telefono, str) and not telefono.strip()):
+        return None
+    if not isinstance(telefono, str) or not _PATRON_TELEFONO.match(telefono.strip()):
+        errores["telefono"] = "El teléfono solo admite números, espacios, guiones, paréntesis y un + inicial (7 a 20 caracteres)."
+        return None
+    return telefono.strip()
+
+
+def validar_datos_perfil(datos):
+    """Validación parcial para actualizar el perfil (RF-10).
+
+    Solo valida los campos presentes en `datos` (nombre, apellido, correo,
+    telefono) y devuelve únicamente esos campos normalizados.
+    """
+    errores = {}
+    limpios = {}
+    if "nombre" in datos:
+        limpios["nombre"] = _texto_obligatorio(datos, "nombre", "El nombre", errores)
+    if "apellido" in datos:
+        limpios["apellido"] = _texto_obligatorio(datos, "apellido", "El apellido", errores)
+    if "correo" in datos:
+        limpios["correo"] = _validar_correo(datos, errores)
+    if "telefono" in datos:
+        limpios["telefono"] = _validar_telefono(datos, errores)
+    if errores:
+        raise ValidacionError("Revise los datos ingresados.", detalles={"campos": errores})
+    return limpios
+
+
 def validar_contrasena(contrasena):
     """Devuelve el mensaje de error o None si la contraseña es aceptable."""
     if not isinstance(contrasena, str) or not contrasena:
@@ -59,20 +100,8 @@ def validar_datos_usuario(datos):
     errores = {}
     nombre = _texto_obligatorio(datos, "nombre", "El nombre", errores)
     apellido = _texto_obligatorio(datos, "apellido", "El apellido", errores)
-
-    correo = normalizar_correo(datos.get("correo"))
-    if not correo:
-        errores["correo"] = "El correo electrónico es obligatorio."
-    elif len(correo) > _LONGITUD_CORREO or not _PATRON_CORREO.match(correo):
-        errores["correo"] = "El correo electrónico no tiene un formato válido."
-
-    telefono = datos.get("telefono")
-    if telefono is None or (isinstance(telefono, str) and not telefono.strip()):
-        telefono = None
-    elif not isinstance(telefono, str) or not _PATRON_TELEFONO.match(telefono.strip()):
-        errores["telefono"] = "El teléfono solo admite números, espacios, guiones, paréntesis y un + inicial (7 a 20 caracteres)."
-    else:
-        telefono = telefono.strip()
+    correo = _validar_correo(datos, errores)
+    telefono = _validar_telefono(datos, errores)
 
     # La contraseña nunca se recorta ni se registra.
     problema = validar_contrasena(datos.get("contrasena"))
