@@ -3,7 +3,7 @@
 # Rol: cliente (el administrador pasa la comprobación de rol, pero solo usa
 # SU carrito). Todas las operaciones devuelven el carrito completo
 # recalculado para que el frontend actualice la vista con una sola respuesta.
-# Contratos: backend/API.md §7.
+# Contratos: backend/API.md §8.
 from flask import Blueprint, jsonify, request
 
 from middleware.auth import requiere_rol, usuario_actual

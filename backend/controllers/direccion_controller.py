@@ -2,7 +2,7 @@
 #
 # Rol: cliente (el administrador pasa la comprobación de rol, pero solo
 # gestiona SUS direcciones: el propietario siempre es el usuario del token).
-# Contratos: backend/API.md §6.
+# Contratos: backend/API.md §7.
 from flask import Blueprint, jsonify, request
 
 from middleware.auth import requiere_rol, usuario_actual

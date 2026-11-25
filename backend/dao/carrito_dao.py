@@ -3,7 +3,7 @@
 # Reglas DAO: conexión como primer argumento, SQL parametrizado, sin commit ni
 # rollback: el servicio que llama (carrito o, más adelante, pedidos) abre la
 # transacción con database.transaccion() y pasa la misma conexión a todos los
-# DAO. Ver "Contrato con el módulo de pedidos" en backend/API.md.
+# DAO. Ver backend/API.md §9 (pedidos) y §10.
 #
 # Estados de carrito (CHECK ck_carrito_estado): abierto | convertido | abandonado.
 # Como máximo un carrito abierto y activo por usuario (ux_carrito_abierto_por_usuario)
@@ -57,6 +57,22 @@ class CarritoDAO:
                 (id_usuario,),
             )
         return CarritoDAO.obtener_abierto(conn, id_usuario, bloquear=True)
+
+    @staticmethod
+    def marcar_convertido(conn, id_carrito, id_usuario):
+        """Transición condicional abierto -> convertido (registro de pedido).
+
+        Devuelve True si el carrito estaba abierto y activo; False si ya había
+        sido convertido o abandonado (el servicio debe abortar).
+        """
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE carrito SET estado = 'convertido' "
+                "WHERE id_carrito = %s AND id_usuario = %s AND estado = 'abierto' AND activo "
+                "RETURNING id_carrito;",
+                (id_carrito, id_usuario),
+            )
+            return cur.fetchone() is not None
 
     @staticmethod
     def listar_items(conn, id_carrito):
