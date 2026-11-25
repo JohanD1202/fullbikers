@@ -10,9 +10,11 @@ Desarrollar una aplicación web que permita a FullBikers gestionar y comercializ
 
 La aplicación permite:
 
-- a los **clientes**, consultar el catálogo, buscar y filtrar productos, gestionar su carrito y sus direcciones, registrar pedidos y seguir su estado;
-- a los **empleados**, verificar, confirmar y actualizar pedidos y registrar movimientos de inventario;
-- a los **administradores**, gestionar usuarios, categorías, productos, variantes, precios e imágenes, y consultar reportes de ventas y alertas de bajo inventario.
+- a los **clientes**, consultar el catálogo, buscar y filtrar productos, gestionar sus datos, su carrito y sus direcciones, registrar pedidos y seguir su estado;
+- a los **empleados**, consultar, verificar, confirmar y actualizar pedidos, consultar el inventario, registrar entradas, salidas y ajustes, y consultar alertas de bajo inventario;
+- a los **administradores**, todo lo anterior, además de gestionar usuarios, categorías, productos, variantes, precios e imágenes, y consultar reportes.
+
+**Autenticación obligatoria.** Todos los usuarios deben iniciar sesión para usar cualquier funcionalidad, incluido el catálogo. No existe catálogo público ni rol de visitante. El registro público crea únicamente cuentas de **cliente**; los empleados y administradores se crean mediante procedimientos administrativos. La autorización se verifica siempre en el backend.
 
 ## Stack tecnológico
 
@@ -42,22 +44,39 @@ React (Netlify)  ──HTTP/JSON──▶  Flask (Render)  ──SQL──▶  P
 .
 ├── .github/
 │   └── CODEOWNERS          # Responsables de revisión del repositorio
-├── backend/                # API Flask (MVC + DAO), aún sin inicializar
+├── backend/                # API Flask (MVC + DAO + servicios) — ver backend/README.md
+│   ├── API.md              # Contratos REST para el frontend
+│   ├── app.py              # Application Factory (create_app)
+│   ├── config/  controllers/  services/  dao/  models/  middleware/
+│   └── tests/              # Pruebas con pytest (sin base de datos)
 ├── database/
 │   ├── schema.sql          # Creación del esquema (10 tablas)
 │   ├── verification.sql    # Verificación de solo lectura
+│   ├── permissions.sql     # Rol técnico de mínimo privilegio (propuesta)
+│   ├── seed_dev.sql        # Datos ficticios, solo rama development
 │   └── README.md           # Documentación del modelo de datos
-├── docs/
-│   ├── academico/          # Documento del proyecto, enunciado y plantilla
-│   └── diagramas/          # Diagramas exportados (MER, clases, casos de uso)
-├── frontend/               # Aplicación React, aún sin inicializar
+├── frontend/               # Aplicación React (Vite + JavaScript), aún sin inicializar
 ├── .gitignore
 └── README.md
 ```
 
+Los documentos académicos (documento del proyecto, enunciado y plantilla) se mantienen fuera del repositorio.
+
+## Estado del desarrollo
+
+| Componente | Estado |
+|---|---|
+| Base de datos | Esquema aplicado en Neon (`production`) y verificado manualmente por el equipo con `verification.sql` |
+| Backend | Infraestructura (factory, configuración, pool Psycopg 3, errores, pruebas) y catálogo en desarrollo local. Pendiente: autenticación obligatoria, que es la siguiente etapa |
+| Frontend | Sin inicializar; puede comenzar con los contratos de [`backend/API.md`](backend/API.md) |
+
+Instalación, variables de entorno, ejecución y pruebas del backend: [`backend/README.md`](backend/README.md).
+
 ## Configuración y secretos
 
-Las credenciales (cadena de conexión a Neon, claves de sesión y similares) **no se versionan**. Cada componente usará un archivo `.env` local, excluido por `.gitignore`, y publicará un `.env.example` con los nombres de las variables y sin valores reales. En producción, los valores se configuran como variables de entorno en Render y Netlify.
+Las credenciales (cadena de conexión a Neon, claves de sesión y similares) **no se versionan**. Cada componente usa un archivo `.env` local, excluido por `.gitignore`, y publica un `.env.example` con los nombres de las variables y sin valores reales (ver [`backend/.env.example`](backend/.env.example)). En producción, los valores se configuran como variables de entorno en Render y Netlify.
+
+Entornos de base de datos en Neon: la rama `development` para el desarrollo local y las pruebas del equipo, y la rama `production` reservada para la aplicación desplegada. La API se conecta con el rol técnico `fullbikers_app` (sin permisos de borrado ni de estructura), nunca con el propietario.
 
 ## Base de datos
 
