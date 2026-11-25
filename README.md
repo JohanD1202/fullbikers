@@ -47,12 +47,13 @@ React (Netlify)  ──HTTP/JSON──▶  Flask (Render)  ──SQL──▶  P
 ├── backend/                # API Flask (MVC + DAO + servicios) — ver backend/README.md
 │   ├── API.md              # Contratos REST para el frontend
 │   ├── app.py              # Application Factory (create_app)
+│   ├── comandos.py         # flask crear-admin / crear-usuarios-prueba
 │   ├── config/  controllers/  services/  dao/  models/  middleware/
-│   └── tests/              # Pruebas con pytest (sin base de datos)
+│   └── tests/              # Pruebas unitarias; tests/integracion/ usa PostgreSQL local
 ├── database/
 │   ├── schema.sql          # Creación del esquema (10 tablas)
 │   ├── verification.sql    # Verificación de solo lectura
-│   ├── permissions.sql     # Rol técnico de mínimo privilegio (propuesta)
+│   ├── permissions.sql     # Rol técnico de mínimo privilegio
 │   ├── seed_dev.sql        # Datos ficticios, solo rama development
 │   └── README.md           # Documentación del modelo de datos
 ├── frontend/               # Aplicación React (Vite + JavaScript), aún sin inicializar
@@ -67,8 +68,8 @@ Los documentos académicos (documento del proyecto, enunciado y plantilla) se ma
 | Componente | Estado |
 |---|---|
 | Base de datos | Esquema aplicado en Neon (`production`) y verificado manualmente por el equipo con `verification.sql` |
-| Backend | Infraestructura (factory, configuración, pool Psycopg 3, errores, pruebas) y catálogo en desarrollo local. Pendiente: autenticación obligatoria, que es la siguiente etapa |
-| Frontend | Sin inicializar; puede comenzar con los contratos de [`backend/API.md`](backend/API.md) |
+| Backend | Infraestructura (factory, configuración, pool Psycopg 3, errores), autenticación JWT con roles (registro de clientes, login, logout, usuario actual), catálogo protegido y comando para el administrador inicial. Probado con pruebas unitarias y de integración sobre PostgreSQL 18 local. Pendiente: perfil, direcciones, carrito, pedidos, inventario y administración |
+| Frontend | Sin inicializar; puede implementar login, registro, rutas protegidas, menú por rol y catálogo con los contratos de [`backend/API.md`](backend/API.md) |
 
 Instalación, variables de entorno, ejecución y pruebas del backend: [`backend/README.md`](backend/README.md).
 
@@ -77,6 +78,10 @@ Instalación, variables de entorno, ejecución y pruebas del backend: [`backend/
 Las credenciales (cadena de conexión a Neon, claves de sesión y similares) **no se versionan**. Cada componente usa un archivo `.env` local, excluido por `.gitignore`, y publica un `.env.example` con los nombres de las variables y sin valores reales (ver [`backend/.env.example`](backend/.env.example)). En producción, los valores se configuran como variables de entorno en Render y Netlify.
 
 Entornos de base de datos en Neon: la rama `development` para el desarrollo local y las pruebas del equipo, y la rama `production` reservada para la aplicación desplegada. La API se conecta con el rol técnico `fullbikers_app` (sin permisos de borrado ni de estructura), nunca con el propietario.
+
+## Autenticación y roles
+
+Todo el sistema exige iniciar sesión (no hay catálogo público). Los usuarios se autentican con un token JWT de 60 minutos que el frontend guarda en `sessionStorage` y envía como `Authorization: Bearer <token>`. Roles: `cliente` (registro público), `empleado` y `administrador` (acceso total). El primer administrador se crea con `flask --app app crear-admin`. Cerrar sesión borra el token del navegador; un token copiado seguiría siendo válido hasta expirar, limitación aceptada para el alcance académico. Detalles: [`backend/README.md`](backend/README.md) §8 y [`backend/API.md`](backend/API.md).
 
 ## Base de datos
 

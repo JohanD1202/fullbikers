@@ -33,5 +33,40 @@ class RecursoNoEncontradoError(ApiError):
     codigo = "recurso_no_encontrado"
 
 
+class ValidacionError(ApiError):
+    """Datos de entrada inválidos. `detalles.campos` indica el problema por campo."""
+
+    status_code = 400
+    codigo = "validacion"
+
+
+class NoAutenticadoError(ApiError):
+    """Sin token válido, token expirado, o usuario inexistente o inactivo."""
+
+    status_code = 401
+    codigo = "no_autenticado"
+
+
+class AccesoDenegadoError(ApiError):
+    """El usuario autenticado no tiene el rol necesario para la operación."""
+
+    status_code = 403
+    codigo = "acceso_denegado"
+
+
+class ConflictoError(ApiError):
+    status_code = 409
+    codigo = "conflicto"
+
+
+class DemasiadosIntentosError(ApiError):
+    status_code = 429
+    codigo = "demasiadas_solicitudes"
+
+    def __init__(self, mensaje, segundos_espera, **kwargs):
+        super().__init__(mensaje, **kwargs)
+        self.segundos_espera = segundos_espera
+
+
 class BaseDeDatosNoDisponibleError(Exception):
     """PostgreSQL no está configurado o no responde. Se traduce a HTTP 503."""

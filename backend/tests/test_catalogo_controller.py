@@ -3,6 +3,14 @@ import pytest
 from exceptions import RecursoNoEncontradoError
 from services import catalogo_service
 
+RUTAS_CATALOGO = ("/api/principal", "/api/productos", "/api/productos/7")
+
+
+@pytest.fixture(autouse=True)
+def sesion_de_cliente(client, cabeceras):
+    """Todas las pruebas de este módulo envían el token de un cliente."""
+    client.environ_base["HTTP_AUTHORIZATION"] = cabeceras["cliente"]["Authorization"]
+
 
 @pytest.fixture
 def llamadas(monkeypatch):
@@ -100,3 +108,24 @@ def test_catalogo_sin_base_de_datos_devuelve_503(client):
     respuesta = client.get("/api/productos")
     assert respuesta.status_code == 503
     assert respuesta.get_json()["error"]["codigo"] == "base_de_datos_no_disponible"
+
+
+@pytest.mark.parametrize("ruta", RUTAS_CATALOGO)
+def test_catalogo_sin_token_devuelve_401(client, llamadas, ruta):
+    client.environ_base.pop("HTTP_AUTHORIZATION")
+    respuesta = client.get(ruta)
+    assert respuesta.status_code == 401
+    assert respuesta.get_json()["error"]["codigo"] == "no_autenticado"
+    assert llamadas == {}
+
+
+def test_catalogo_sin_token_valida_autenticacion_antes_que_parametros(client, llamadas):
+    client.environ_base.pop("HTTP_AUTHORIZATION")
+    assert client.get("/api/productos?categoria=abc").status_code == 401
+
+
+@pytest.mark.parametrize("rol", ["cliente", "empleado", "administrador"])
+@pytest.mark.parametrize("ruta", RUTAS_CATALOGO)
+def test_catalogo_permitido_a_los_tres_roles(client, llamadas, cabeceras, rol, ruta):
+    client.environ_base.pop("HTTP_AUTHORIZATION")
+    assert client.get(ruta, headers=cabeceras[rol]).status_code == 200

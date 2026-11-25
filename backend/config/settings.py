@@ -6,6 +6,7 @@ ausentes, débiles o de ejemplo.
 """
 import os
 import secrets
+from datetime import timedelta
 
 
 class ConfiguracionInvalidaError(RuntimeError):
@@ -53,6 +54,13 @@ class BaseConfig:
     PAGINA_TAMANO_PREDETERMINADO = 12
     PAGINA_TAMANO_MAXIMO = 50
     BUSQUEDA_LONGITUD_MAXIMA = 100
+
+    # Autenticación (Flask-JWT-Extended). Decisión aprobada: token de acceso
+    # de 60 minutos, enviado en "Authorization: Bearer <token>", sin refresh
+    # token ni revocación en el servidor.
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=60)
+    JWT_TOKEN_LOCATION = ["headers"]
+    JWT_ALGORITHM = "HS256"
 
     def __init__(self):
         self.SECRET_KEY = _texto("SECRET_KEY")

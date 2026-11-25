@@ -2,14 +2,16 @@
 -- FullBikers - Datos ficticios para DESARROLLO (catálogo)
 -- -----------------------------------------------------------------------------
 -- SOLO para la rama "development" de Neon. NUNCA ejecutar en production.
--- Estado        : propuesta; no ha sido ejecutado.
+-- Estado        : verificado el 2026-11-25 en un clúster PostgreSQL 18.4 local
+--                 temporal (dos ejecuciones, sin duplicados). Pendiente de
+--                 ejecutar en la rama development de Neon.
 -- Requiere      : schema.sql aplicado.
 -- Ejecutar como : fullbikers_owner (SQL Editor de Neon, rama development).
 --
 -- Contenido     : categorías, productos y variantes. Sin usuarios, carritos,
---                 pedidos ni movimientos: los usuarios de prueba (con hashes
---                 generados por el backend) se crearán en la etapa de
---                 autenticación.
+--                 pedidos ni movimientos. Los usuarios de prueba se crean con
+--                 el backend (hash Werkzeug), nunca con SQL:
+--                   flask --app app crear-usuarios-prueba   (solo development)
 -- Datos         : marcas, nombres y referencias inventados. Sin datos
 --                 personales. Imágenes en NULL (el frontend muestra una
 --                 imagen genérica).

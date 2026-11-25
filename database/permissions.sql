@@ -1,7 +1,9 @@
 -- =============================================================================
 -- FullBikers - Rol técnico de mínimo privilegio para la API Flask
 -- -----------------------------------------------------------------------------
--- Estado        : PROPUESTA. No ha sido ejecutado en Neon.
+-- Estado        : verificado el 2026-11-25 en un clúster PostgreSQL 18.4 local
+--                 temporal (ver database/README.md §18). Pendiente de
+--                 ejecutar en Neon.
 -- Requiere      : schema.sql ya aplicado en la rama de destino.
 -- Ejecutar como : fullbikers_owner (propietario de las tablas), desde el
 --                 SQL Editor de Neon, UNA VEZ POR RAMA (development y, cuando

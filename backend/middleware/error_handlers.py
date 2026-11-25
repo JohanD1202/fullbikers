@@ -42,7 +42,11 @@ def respuesta_error(codigo, mensaje, status_code, detalles=None):
 def registrar_manejadores(app):
     @app.errorhandler(ApiError)
     def _api_error(exc):
-        return respuesta_error(exc.codigo, exc.mensaje, exc.status_code, exc.detalles)
+        respuesta, status_code = respuesta_error(exc.codigo, exc.mensaje, exc.status_code, exc.detalles)
+        segundos_espera = getattr(exc, "segundos_espera", None)
+        if segundos_espera:
+            respuesta.headers["Retry-After"] = str(segundos_espera)
+        return respuesta, status_code
 
     @app.errorhandler(HTTPException)
     def _http_error(exc):

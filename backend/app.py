@@ -2,6 +2,7 @@
 
 Desarrollo (Windows):   flask --app app run --debug
 Producción (Render):    gunicorn --bind 0.0.0.0:$PORT "app:create_app()"
+Administrador inicial:  flask --app app crear-admin
 """
 import logging
 import os
@@ -10,12 +11,16 @@ from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
 
+import comandos
 from config import database
 from config.logs import configurar_logging
 from config.settings import obtener_configuracion
+from controllers.auth_controller import auth_bp
 from controllers.catalogo_controller import catalogo_bp
 from controllers.health_controller import health_bp
+from middleware import auth
 from middleware.error_handlers import registrar_manejadores
+from services import auth_service
 
 logger = logging.getLogger(__name__)
 
@@ -47,23 +52,19 @@ def create_app(nombre_entorno=None):
     )
 
     registrar_manejadores(app)
+    auth.init_app(app)
+    auth_service.init_app(app)
     database.init_app(app)
 
+    # Públicos: diagnóstico, registro e inicio de sesión. El resto de rutas
+    # se protege con los decoradores de middleware/auth.py.
     app.register_blueprint(health_bp)
-    _registrar_blueprints_funcionales(app)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(catalogo_bp)
+    comandos.registrar_comandos(app)
 
     logger.info("API FullBikers iniciada (entorno: %s).", app.config["APP_ENV"])
     return app
-
-
-def _registrar_blueprints_funcionales(app):
-    # Salvaguarda temporal: el catálogo aún no exige autenticación, por lo que
-    # no se expone en producción. Al proteger sus rutas con el middleware de
-    # autenticación (siguiente etapa) se elimina esta condición.
-    if app.config["APP_ENV"] == "production":
-        logger.warning("Catálogo no registrado en producción hasta implementar la autenticación obligatoria.")
-        return
-    app.register_blueprint(catalogo_bp)
 
 
 if __name__ == "__main__":

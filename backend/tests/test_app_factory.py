@@ -74,17 +74,24 @@ def test_produccion_rechaza_configuracion_insegura(monkeypatch, cambios):
     assert "clave@" not in str(error.value)
 
 
-def test_produccion_valida_no_expone_catalogo_sin_autenticacion(monkeypatch):
+def test_produccion_registra_catalogo_protegido(monkeypatch):
     _entorno_produccion(monkeypatch)
     app = create_app("production")
     try:
         rutas = {regla.rule for regla in app.url_map.iter_rules()}
-        assert "/api/health" in rutas
-        assert "/api/productos" not in rutas
-        assert "/api/principal" not in rutas
+        assert {"/api/health", "/api/auth/login", "/api/auth/register", "/api/productos", "/api/principal"} <= rutas
+        # Sin token: 401 antes de tocar la base de datos.
+        respuesta = app.test_client().get("/api/productos")
+        assert respuesta.status_code == 401
+        assert respuesta.get_json()["error"]["codigo"] == "no_autenticado"
     finally:
         from config import database
         database.cerrar_pool(app)
+
+
+def test_jwt_configurado_a_60_minutos(app):
+    assert app.config["JWT_ACCESS_TOKEN_EXPIRES"].total_seconds() == 3600
+    assert app.config["JWT_TOKEN_LOCATION"] == ["headers"]
 
 
 def test_pool_invalido_rechazado(monkeypatch):

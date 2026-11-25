@@ -42,8 +42,8 @@ Esquema relacional de **FullBikers**, tienda virtual B2C de accesorios y artícu
 |---|---|
 | `schema.sql` | Crea las 10 tablas, restricciones, índices y comentarios en **una sola transacción**. Sin `DROP`, `TRUNCATE`, `CREATE DATABASE` ni `IF NOT EXISTS`. Sin datos. |
 | `verification.sql` | Consultas **de solo lectura** (transacción `READ ONLY` + `ROLLBACK`) para verificar estructura e integridad. |
-| `permissions.sql` | **Propuesta (sin ejecutar).** Crea el rol técnico `fullbikers_app` de mínimo privilegio para la API (sin `DELETE`, `TRUNCATE` ni DDL) y trae consultas de verificación de permisos. Se ejecuta una vez por rama de Neon; la contraseña se asigna aparte y no se versiona. |
-| `seed_dev.sql` | **Solo rama `development`.** Datos ficticios de catálogo (categorías, productos y variantes con casos activos, inactivos, con y sin stock). Repetible (`ON CONFLICT DO NOTHING`), no borra datos, no crea usuarios. |
+| `permissions.sql` | **Verificado en PostgreSQL 18 local (2026-11-25); pendiente de ejecutar en Neon.** Crea el rol técnico `fullbikers_app` de mínimo privilegio para la API (sin `DELETE`, `TRUNCATE` ni DDL) y trae consultas de verificación de permisos. Se ejecuta una vez por rama de Neon; la contraseña se asigna aparte y no se versiona. |
+| `seed_dev.sql` | **Solo rama `development`.** Datos ficticios de catálogo (categorías, productos y variantes con casos activos, inactivos, con y sin stock). Repetible (`ON CONFLICT DO NOTHING`, verificado), no borra datos, no crea usuarios (los usuarios de prueba se crean con `flask --app app crear-usuarios-prueba`). |
 | `README.md` | Este documento. |
 
 ## 2. Ejecución manual en Neon
@@ -496,7 +496,8 @@ La búsqueda "contiene" (`ILIKE '%texto%'`) no usa índices B-tree; con un catá
 ## 13. Seguridad
 
 - Sin credenciales, contraseñas, cadenas de conexión ni datos personales en los archivos.
-- No se crea ningún usuario administrador ni contraseña predeterminada. **Primer administrador:** se propone el comando `flask crear-admin` del backend (pendiente de aprobación; ver `backend/README.md` §8), que genera el hash con Werkzeug y crea el usuario con rol `administrador`. Reemplaza el procedimiento anterior (registrarse como cliente y ejecutar un `UPDATE` manual).
+- No se crea ningún usuario administrador ni contraseña predeterminada. **Primer administrador:** comando `flask --app app crear-admin` del backend (implementado; ver `backend/README.md` §9.3), que pide la contraseña de forma oculta, genera el hash con Werkzeug y crea el usuario con rol `administrador`. No modifica ni promueve usuarios existentes.
+- **Sesiones:** sin tablas ni columnas de sesión. El cierre de sesión elimina el token en el navegador; un token copiado sigue siendo válido hasta expirar (60 min) salvo que el usuario se desactive (`usuario.activo = false`, efecto inmediato). Limitación aceptada para el alcance académico.
 - Contraseñas: solo hashes generados por Flask; el `CHECK` de longitud es una barrera mínima, no una garantía.
 - `REVOKE ALL ... FROM PUBLIC` explícito sobre las 10 tablas. No se crean roles de PostgreSQL.
 - React nunca se conecta a PostgreSQL; la cadena de conexión vive solo en variables de entorno de Render (`DATABASE_URL`), con `sslmode=require`.
@@ -612,7 +613,7 @@ SELECT estado, COUNT(*) FROM pedido WHERE activo GROUP BY estado;
 
 ## 17. Limitaciones y decisiones pendientes
 
-- **O6 — Rol de mínimo privilegio para Flask**: propuesta en `permissions.sql` (sin ejecutar). Rol `fullbikers_app` con `SELECT, INSERT, UPDATE` en las tablas de operación, solo `SELECT, INSERT` y `UPDATE (activo)` en `detalle_pedido` y `movimiento_inventario`, sin `DELETE`, `TRUNCATE` ni DDL. No necesita `USAGE` sobre las secuencias de identidad (PostgreSQL no comprueba ese privilegio al generar valores de una columna `IDENTITY`). El owner queda solo para migraciones.
+- **O6 — Rol de mínimo privilegio para Flask**: `permissions.sql`, verificado en PostgreSQL 18 local; pendiente de ejecutar en Neon. Rol `fullbikers_app` con `SELECT, INSERT, UPDATE` en las tablas de operación, solo `SELECT, INSERT` y `UPDATE (activo)` en `detalle_pedido` y `movimiento_inventario`, sin `DELETE`, `TRUNCATE` ni DDL. No necesita `USAGE` sobre las secuencias de identidad (PostgreSQL no comprueba ese privilegio al generar valores de una columna `IDENTITY`). El owner queda solo para migraciones.
 - **Invariantes no declarativas** (las garantiza el backend; detectables con `verification.sql`): producto con al menos una variante; pedido con al menos una línea; `pedido.subtotal = Σ líneas`; cantidad del movimiento igual a la de la línea; copia de entrega igual a la dirección al momento del pedido; transiciones de estado válidas; continuidad de la cadena `stock_anterior`/`stock_nuevo`.
 - **Historial de estados:** solo se guarda el último cambio. Si se requiere trazabilidad completa (quién confirmó, quién envió), habrá que crear `historial_estado_pedido` (tabla 11, requiere aprobación).
 - **Datos del producto en el pedido:** se conserva el precio; nombre y referencia se leen del producto actual. Si un producto se renombra, los pedidos antiguos mostrarán el nombre nuevo.
@@ -637,4 +638,18 @@ Pruebas **ejecutadas realmente** el 2026-11-24 en un clúster PostgreSQL **18.4*
 
 **Neon `production` (PostgreSQL 18.7):** `schema.sql` y `verification.sql` fueron ejecutados **manualmente por el equipo** (Johan Idárraga) desde el SQL Editor de Neon, con los resultados esperados según el §2. Esta verificación no fue realizada por herramientas automatizadas del repositorio.
 
-**Pendiente:** `permissions.sql` y `seed_dev.sql` no se han ejecutado en ninguna rama.
+### 18.1 Verificación del 2026-11-25 (permisos, datos de desarrollo y backend)
+
+Clúster PostgreSQL **18.4** local, temporal y aislado (`initdb` en un directorio temporal, puerto 55433, solo `localhost`, autenticación `scram-sha-256`, base `fullbikers` propiedad de un rol `fullbikers_owner` con `CREATEROLE`, como en Neon). Eliminado al terminar. **No** se usó Neon ni el servicio PostgreSQL del equipo.
+
+| Prueba | Resultado |
+|---|---|
+| `schema.sql` | ✅ `COMMIT`. 10 tablas, 10 PK, 13 FK (todas `RESTRICT`), 8 UNIQUE, 44 CHECK, 33 índices, 0 permisos a `PUBLIC` |
+| `verification.sql` (antes y después del seed) | ✅ Sin errores; consultas de integridad 14–20 en 0 filas |
+| `permissions.sql` | ✅ `COMMIT` sin cambios. V1: solo `LOGIN`, `CONNECTION LIMIT 30`. V2: 0 membresías. V3: `SELECT`/`INSERT` en 10/10; `UPDATE` en 8 tablas; `DELETE`, `TRUNCATE`, `REFERENCES`, `TRIGGER` en ninguna. V4: en `detalle_pedido` y `movimiento_inventario` solo `activo` es actualizable. V5: `CONNECT` y `TEMPORARY` (heredado de `PUBLIC`) sí; `CREATE` en base y esquema no. V6: 0 objetos propios. V7: sin `USAGE` en las 10 secuencias |
+| `seed_dev.sql` (dos ejecuciones) | ✅ 1.ª: 6 categorías, 14 productos, 28 variantes. 2.ª: `INSERT 0 0` en las tres; totales iguales (sin duplicados). Resumen: 11 visibles, 9 con stock, CAS-ABA-002 con stock visible 5 |
+| Pruebas de integración del backend (`backend/tests/integracion`, 83 casos, ejecutadas dos veces) como `fullbikers_app` | ✅ 83/83. Permisos (incluye `DELETE`, `TRUNCATE`, `CREATE TABLE`, `ALTER`, `DROP`, `CREATE INDEX` y `UPDATE` de columnas históricas rechazados con `42501`), identidades (`GENERATED ALWAYS` rechaza id explícito; `RETURNING` funciona sin `USAGE` en secuencias), restricciones (CHECK, FK, UNIQUE), precisión `NUMERIC(14,2)`, catálogo (búsqueda, filtros, paginación, stock, exclusión de inactivos, precios exactos), registro/login/roles/logout y comandos `crear-admin` / `crear-usuarios-prueba` |
+
+No se encontraron errores en `permissions.sql` ni en `seed_dev.sql`; solo se actualizaron sus comentarios de estado. Observación: los `id_producto` e `id_variante` del seed no siguen necesariamente el orden del archivo (`INSERT … SELECT … JOIN` no garantiza orden); ningún código depende de ello.
+
+**Pendiente:** ejecutar `permissions.sql` (ambas ramas) y `seed_dev.sql` (solo `development`) en Neon, según `backend/README.md` §9.1.
