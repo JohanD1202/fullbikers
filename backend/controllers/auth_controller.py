@@ -7,7 +7,6 @@ from flask import Blueprint, current_app, jsonify, request
 
 from middleware.auth import requiere_autenticacion, usuario_actual
 from services import auth_service
-
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
