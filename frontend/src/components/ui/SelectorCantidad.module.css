@@ -1,0 +1,45 @@
+.selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--r-control);
+  background: var(--neblina);
+  border: 1.5px solid var(--neblina-2);
+}
+.selector button {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--papel);
+  color: var(--cordillera);
+  transition: transform 0.2s var(--curva), background-color 0.2s;
+}
+.selector button:hover:not(:disabled) {
+  background: var(--cordillera-suave);
+}
+.selector button:active:not(:disabled) {
+  transform: scale(0.88);
+}
+.selector button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.valor {
+  display: grid;
+  place-items: center;
+  min-width: 2.4rem;
+  overflow: hidden;
+  font-weight: 700;
+}
+.sm button {
+  width: 1.85rem;
+  height: 1.85rem;
+}
+.sm .valor {
+  min-width: 2rem;
+  font-size: var(--t-sm);
+}

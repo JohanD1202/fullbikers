@@ -1,0 +1,85 @@
+.boton {
+  --fondo: var(--cordillera);
+  --texto: var(--papel);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-2);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-control);
+  background: var(--fondo);
+  color: var(--texto);
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.25s var(--curva), background-color 0.2s, box-shadow 0.25s var(--curva), color 0.2s;
+}
+.boton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -14px var(--fondo);
+}
+.boton:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+.boton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.boton.cargando:disabled {
+  opacity: 0.85;
+  cursor: progress;
+}
+
+.sm {
+  padding: 0.4rem 0.9rem;
+  font-size: var(--t-sm);
+}
+.md {
+  padding: 0.7rem 1.35rem;
+  font-size: var(--t-sm);
+}
+.lg {
+  padding: 0.95rem 1.8rem;
+  font-size: var(--t-base);
+}
+
+.primario:hover:not(:disabled) {
+  --fondo: var(--cordillera-2);
+}
+.acento {
+  --fondo: var(--linea);
+  --texto: var(--asfalto);
+}
+.acento:hover:not(:disabled) {
+  --fondo: #ffd24a;
+}
+.secundario {
+  --fondo: transparent;
+  --texto: var(--cordillera);
+  border-color: color-mix(in srgb, var(--cordillera) 35%, transparent);
+}
+.secundario:hover:not(:disabled) {
+  background: var(--cordillera-suave);
+  box-shadow: none;
+}
+.fantasma {
+  --fondo: transparent;
+  --texto: var(--asfalto-2);
+}
+.fantasma:hover:not(:disabled) {
+  background: var(--neblina-2);
+  box-shadow: none;
+}
+.peligro {
+  --fondo: var(--peligro);
+}
+
+.giro {
+  animation: giro 0.8s linear infinite;
+}
+@keyframes giro {
+  to {
+    transform: rotate(360deg);
+  }
+}

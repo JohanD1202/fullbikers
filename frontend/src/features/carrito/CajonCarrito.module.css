@@ -1,0 +1,30 @@
+.cargando {
+  display: grid;
+  gap: var(--e-3);
+}
+.pie {
+  display: grid;
+  gap: var(--e-3);
+}
+.total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--t-lg);
+}
+.total strong {
+  font-variation-settings: "wdth" 125;
+  font-size: var(--t-xl);
+}
+.alerta {
+  padding: var(--e-2) var(--e-3);
+  border-radius: 12px;
+  background: var(--aviso-suave);
+  color: var(--aviso);
+  font-size: var(--t-sm);
+}
+.acciones {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--e-2);
+}

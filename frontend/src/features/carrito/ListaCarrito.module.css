@@ -1,0 +1,123 @@
+.lista {
+  display: grid;
+  gap: var(--e-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.linea {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: var(--e-4);
+  align-items: start;
+  padding: var(--e-3);
+  border-radius: var(--r-superficie);
+  background: var(--papel);
+  border: 1.5px solid var(--neblina-2);
+  overflow: hidden;
+}
+.compacto .linea {
+  grid-template-columns: 72px 1fr;
+  background: var(--neblina);
+  border-color: transparent;
+}
+.compacto .controles {
+  grid-column: 2;
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  align-items: center;
+}
+.noDisponible {
+  border-color: color-mix(in srgb, var(--aviso) 40%, transparent);
+  background: color-mix(in srgb, var(--aviso-suave) 55%, var(--papel));
+}
+.foto {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 16px 16px 16px 28px;
+  overflow: hidden;
+}
+.info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.nombre {
+  font-weight: 680;
+  text-decoration: none;
+  line-height: 1.25;
+}
+.nombre:hover {
+  color: var(--cordillera);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.variante {
+  color: var(--asfalto-2);
+  font-size: var(--t-sm);
+}
+.sku {
+  color: var(--musgo);
+  font-size: var(--t-xs);
+}
+.unitario {
+  color: var(--musgo);
+  font-size: var(--t-xs);
+}
+.aviso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e-2);
+  margin-top: var(--e-2);
+  color: var(--aviso);
+  font-size: var(--t-sm);
+  font-weight: 550;
+}
+.controles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--e-2);
+}
+.subtotal {
+  font-variation-settings: "wdth" 115;
+  font-size: var(--t-base);
+}
+.fila {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+}
+.cantidadFija {
+  color: var(--musgo);
+  font-weight: 650;
+}
+.retirar {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--musgo);
+  transition: background-color 0.2s, color 0.2s, transform 0.2s var(--curva);
+}
+.retirar:hover:not(:disabled) {
+  background: var(--peligro-suave);
+  color: var(--peligro);
+  transform: rotate(-8deg);
+}
+
+@media (max-width: 640px) {
+  .linea {
+    grid-template-columns: 72px 1fr;
+  }
+  .controles {
+    grid-column: 2;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    align-items: center;
+  }
+}

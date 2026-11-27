@@ -1,0 +1,88 @@
+.campo {
+  display: grid;
+  gap: var(--e-1);
+}
+.marco {
+  position: relative;
+}
+.control {
+  width: 100%;
+  padding: 1.45rem 1rem 0.55rem;
+  border: 1.5px solid var(--neblina-2);
+  border-radius: var(--r-campo);
+  background: var(--papel);
+  font-size: var(--t-base);
+  transition: border-color 0.2s, box-shadow 0.25s var(--curva), background-color 0.2s;
+}
+.conOjo {
+  padding-right: 3.2rem;
+}
+.control:hover {
+  border-color: color-mix(in srgb, var(--musgo) 45%, transparent);
+}
+.control:focus {
+  outline: none;
+  border-color: var(--cordillera);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cordillera) 14%, transparent);
+}
+.area {
+  min-height: 7rem;
+  resize: vertical;
+}
+.etiqueta {
+  position: absolute;
+  left: 1rem;
+  top: 1.05rem;
+  color: var(--musgo);
+  pointer-events: none;
+  transform-origin: left top;
+  transition: transform 0.22s var(--curva), color 0.2s;
+}
+.control:focus + .etiqueta,
+.control:not(:placeholder-shown) + .etiqueta {
+  transform: translateY(-0.62rem) scale(0.78);
+  color: var(--cordillera);
+}
+.ojo {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--musgo);
+}
+.ojo:hover {
+  background: var(--neblina);
+}
+.conError .control {
+  border-color: var(--peligro);
+  background: color-mix(in srgb, var(--peligro-suave) 40%, var(--papel));
+}
+.conError .etiqueta {
+  color: var(--peligro);
+}
+.pie {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--e-3);
+  min-height: 1.1rem;
+  padding-inline: 0.35rem;
+  font-size: var(--t-xs);
+}
+.error {
+  color: var(--peligro);
+  font-weight: 550;
+}
+.ayuda {
+  color: var(--musgo);
+}
+.contador {
+  margin-left: auto;
+  color: var(--musgo);
+}
