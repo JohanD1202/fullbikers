@@ -1,0 +1,15 @@
+.esqueleto {
+  display: block;
+  border-radius: 10px;
+  background: linear-gradient(100deg, var(--neblina-2) 30%, var(--papel) 50%, var(--neblina-2) 70%);
+  background-size: 300% 100%;
+  animation: brillo 1.4s ease-in-out infinite;
+}
+@keyframes brillo {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}

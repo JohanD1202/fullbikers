@@ -1,0 +1,93 @@
+.pagina {
+  padding-top: var(--e-7);
+}
+.titulo {
+  margin-bottom: var(--e-6);
+  font-size: var(--t-3xl);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.rejilla {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--e-6);
+  align-items: start;
+}
+.lineas {
+  display: grid;
+  gap: var(--e-3);
+}
+.resumen {
+  position: sticky;
+  top: calc(var(--alto-header) + var(--e-4));
+  display: grid;
+  gap: var(--e-4);
+  padding: var(--e-6);
+  border-radius: var(--r-contenedor);
+  background: var(--asfalto);
+  color: var(--papel);
+}
+.tituloResumen {
+  font-size: var(--t-lg);
+}
+.cifras {
+  display: grid;
+  gap: var(--e-3);
+  margin: 0;
+}
+.cifras div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.cifras dt {
+  color: color-mix(in srgb, var(--papel) 70%, transparent);
+}
+.cifras dd {
+  margin: 0;
+  font-weight: 650;
+}
+.total {
+  padding-top: var(--e-3);
+  border-top: 1px dashed color-mix(in srgb, var(--linea) 60%, transparent);
+}
+.total dd {
+  color: var(--linea);
+  font-size: var(--t-xl);
+  font-weight: 800;
+  font-variation-settings: "wdth" 125;
+}
+.nota {
+  color: color-mix(in srgb, var(--papel) 65%, transparent);
+  font-size: var(--t-xs);
+}
+.alerta {
+  padding: var(--e-3);
+  border-radius: 14px;
+  background: var(--aviso-suave);
+  color: var(--aviso);
+  font-size: var(--t-sm);
+  font-weight: 550;
+}
+.continuar {
+  width: 100%;
+}
+.resumen .continuar:last-child {
+  color: var(--papel);
+}
+.resumen .continuar:last-child:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+@media (max-width: 900px) {
+  .rejilla {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .resumen {
+    position: static;
+  }
+}
+@media (max-width: 760px) {
+  .pagina {
+    padding-top: var(--e-5);
+  }
+}

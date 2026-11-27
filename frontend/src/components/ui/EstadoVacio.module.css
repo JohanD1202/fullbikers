@@ -1,0 +1,30 @@
+.vacio {
+  display: grid;
+  justify-items: center;
+  gap: var(--e-3);
+  padding: var(--e-8) var(--e-5);
+  text-align: center;
+}
+.icono {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
+  background: var(--cordillera-suave);
+  color: var(--cordillera);
+}
+.error .icono {
+  background: var(--peligro-suave);
+  color: var(--peligro);
+}
+.titulo {
+  font-size: var(--t-xl);
+}
+.texto {
+  max-width: 46ch;
+  color: var(--musgo);
+}
+.accion {
+  margin-top: var(--e-3);
+}

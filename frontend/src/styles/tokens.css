@@ -1,0 +1,64 @@
+/*
+ * Tokens de diseño de FullBikers.
+ * Inspiración: carretera de montaña del Valle del Cauca. Niebla, asfalto,
+ * cordillera y la línea amarilla de la vía.
+ */
+:root {
+  /* Paleta base */
+  --neblina: #eef2f0;
+  --neblina-2: #e2e9e6;
+  --papel: #fbfcfb;
+  --asfalto: #172322;
+  --asfalto-2: #2b3a38;
+  --musgo: #5e7a72;
+  --cordillera: #0f4c42;
+  --cordillera-2: #13604f;
+  --cordillera-suave: #d6e6e0;
+  --linea: #f2c230;
+  --linea-suave: #fbefc4;
+
+  /* Estados */
+  --peligro: #b83a26;
+  --peligro-suave: #f8e1dc;
+  --aviso: #8a5a00;
+  --aviso-suave: #fdf0d2;
+  --exito: #1c7a4c;
+  --exito-suave: #dcf1e5;
+
+  /* Tipografía: Archivo variable; el eje de anchura da carácter a los titulares */
+  --fuente: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ancho-display: 125;
+  --ancho-texto: 100;
+
+  --t-xs: 0.8125rem;
+  --t-sm: 0.9375rem;
+  --t-base: 1.0625rem;
+  --t-lg: 1.25rem;
+  --t-xl: 1.625rem;
+  --t-2xl: clamp(1.9rem, 1.4rem + 2vw, 2.6rem);
+  --t-3xl: clamp(2.4rem, 1.5rem + 4vw, 4.4rem);
+
+  /* Espacio (escala de 4) */
+  --e-1: 0.25rem;
+  --e-2: 0.5rem;
+  --e-3: 0.75rem;
+  --e-4: 1rem;
+  --e-5: 1.5rem;
+  --e-6: 2rem;
+  --e-7: 3rem;
+  --e-8: 4.5rem;
+
+  /* Radios por jerarquía: controles en píldora, superficies suaves, contenedores amplios */
+  --r-control: 999px;
+  --r-campo: 14px;
+  --r-superficie: 22px;
+  --r-contenedor: 34px;
+
+  --sombra-flotante: 0 18px 50px -18px rgba(15, 76, 66, 0.35), 0 4px 14px -6px rgba(23, 35, 34, 0.18);
+  --sombra-suave: 0 1px 0 rgba(23, 35, 34, 0.06), 0 8px 24px -16px rgba(23, 35, 34, 0.3);
+
+  --ancho-max: 1240px;
+  --alto-header: 72px;
+
+  --curva: cubic-bezier(0.22, 1, 0.36, 1);
+}
